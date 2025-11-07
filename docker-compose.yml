@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  web:  # Your Django app service
+    build: .
+    command: sh -c "sleep 5 && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    environment:
+      # --- THIS IS THE LINE YOU NEED ---
+      # It uses the service name "db" as the host.
+      - DATABASE_URL=postgres://postgres:p@ssw0rd@db:5432/test
+      - OTEL_SERVICE_NAME=my-django-app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+    depends_on:
+      - db  # Tells Docker to start the db before the web app
+      - jaeger
+
+  db:  # Your PostgreSQL service
+    image: postgres:16-alpine
+    environment:
+      # These variables create the database and user for you
+      - POSTGRES_DB=test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=p@ssw0rd
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC endpoint
+
+volumes:
+  postgres_data:
+

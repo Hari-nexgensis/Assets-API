@@ -26,7 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('base.urls'))
 ]
-if settings.DEBUG:
-    urlpatterns += [
-        path('silk/', include('silk.urls', namespace='silk'))
-    ]
+# if settings.DEBUG:
+#     urlpatterns += [
+#         path('silk/', include('silk.urls', namespace='silk'))
+#     ]

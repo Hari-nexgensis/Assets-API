@@ -11,6 +11,50 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
+import os
+
+import logging
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+from opentelemetry.instrumentation.django import DjangoInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+# Jaeger setup
+# Get Service Name from environment variable
+service_name = os.environ.get('OTEL_SERVICE_NAME', 'django-app-default')
+
+# Set up the Resource
+resource = Resource(attributes={
+    "service.name": service_name
+})
+
+# Set up the TracerProvider
+provider = TracerProvider(resource=resource)
+
+# Get OTLP endpoint from environment
+otlp_endpoint = os.environ.get('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4317')
+
+# Set up the OTLP Exporter
+exporter = OTLPSpanExporter(
+    endpoint=otlp_endpoint,
+    insecure=True
+)
+processor = BatchSpanProcessor(exporter)
+provider.add_span_processor(processor)
+
+# Set the global TracerProvider
+from opentelemetry import trace
+trace.set_tracer_provider(provider)
+
+# Instrument Django, Logging, and PostgreSQL
+LoggingInstrumentor().instrument(set_logging_format=True)
+DjangoInstrumentor().instrument()
+Psycopg2Instrumentor().instrument()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +85,7 @@ INSTALLED_APPS = [
     'import_export',
     'mptt.apps.MpttConfig',
     'base.apps.BaseConfig',
-    'silk',
+    # 'silk',
 ]
 
 MIDDLEWARE = [
@@ -52,7 +96,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'silk.middleware.SilkyMiddleware',
+    # 'silk.middleware.SilkyMiddleware',
 ]
 
 ROOT_URLCONF = 'Asset_main.urls'
@@ -80,17 +124,24 @@ WSGI_APPLICATION = 'Asset_main.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'test',
-        'USER': 'postgres',
-        'PASSWORD': '5942',
-        'HOST': 'localhost',
-        'PORT': '5432',  # This is the default, so it's technically optional
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'test',
+#         'USER': 'postgres',
+#         'PASSWORD': '5942',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
+DATABASES = {
+    'default': dj_database_url.config(
+        default = os.environ.get('DATABASE_URL','postgresql://postgres:5942@localhost:5432/test')
+    )
+
+    
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
