@@ -1,5 +1,14 @@
-{% extends 'main.html' %}
-
-{% block content %}
-<h1>Home</h1>
-{% endblock content %}
+{% load static vite_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Management System</title>
+    <link rel="stylesheet" href="{% vite_asset 'src/main.jsx' 'css' %}">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="{% vite_asset 'src/main.jsx' 'js' %}"></script>
+</body>
+</html>

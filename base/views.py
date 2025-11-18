@@ -13,11 +13,8 @@ from .serializers import AssetSerializer
 
 
 def home(request):
+    """Serve the React application"""
     return render(request, "home.html")
-
-
-def assets(request):
-    return render(request, "assets.html")
 
 
 @api_view(["GET", "POST"])
@@ -28,6 +25,17 @@ def asset_list_create(request):
     if request.method == "GET":
         # Get all assets from the database
         assets = Asset.objects.all()
+
+        # Global search across all fields
+        global_search = request.query_params.get("search", None)
+        if global_search:
+            assets = assets.filter(
+                Q(asset_name__icontains=global_search) |
+                Q(asset_code__icontains=global_search) |
+                Q(asset_type__icontains=global_search) |
+                Q(location__icontains=global_search) |
+                Q(manager__icontains=global_search)
+            )
 
         # Individual field filters
         asset_name = request.query_params.get("asset_name", None)
@@ -139,3 +147,24 @@ def asset_detail(request, pk):
         asset.delete()
         # Return a 204 No Content status
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+def asset_children(request, pk):
+    """
+    Get all direct children of a specific asset.
+    """
+    try:
+        asset = Asset.objects.get(pk=pk)
+    except Asset.DoesNotExist:
+        return Response({"error": "Asset not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Get direct children only
+    children = asset.children.all()
+    serializer = AssetSerializer(children, many=True)
+    
+    return Response({
+        "parent": AssetSerializer(asset).data,
+        "children": serializer.data,
+        "count": children.count()
+    }, status=status.HTTP_200_OK)
